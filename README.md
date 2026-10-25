@@ -6,6 +6,10 @@ A rehearsal room for the conversations that decide things — in the language yo
 
 Not a language course. No lessons, no levels, no vocabulary drills.
 
+**Live demo:** https://take-two.slh3oblh3erf.opentunnel.xyz — pick a room, allow the mic, and talk. (Tunnel link, so it is only up while the host machine is running.)
+
+**Code:** https://github.com/criticic/take-two
+
 ## Run
 
 ```bash
