@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Take Two</title>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<style>
+  :root{
+    --paper:#E9E7DE; --ink:#16181A; --pencil:#2C4A6B; --red:#B23F2C;
+    --smoke:#8B8C84; --rule:#C9C6B9; --sheet:#EFEDE4;
+    --gutter:80px; --notes:272px;
+    --serif:"Tiro Devanagari Hindi","Kohinoor Devanagari",Georgia,serif;
+    --sans:"Mukta","Kohinoor Devanagari",-apple-system,BlinkMacSystemFont,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--paper)}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+       font-weight:400;-webkit-font-smoothing:antialiased;line-height:1.5}
+  ::selection{background:#d7dfe8}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 32px 130px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:24px;
+         border-bottom:1px solid var(--ink);padding-bottom:12px;margin-bottom:38px}
+  .brand{font-family:var(--serif);font-size:26px}
+  .lede{font-size:13px;color:var(--smoke);margin:0;max-width:46ch;text-align:right}
+
+  .step{display:none}
+  .step.on{display:block}
+  h1{font-family:var(--serif);font-weight:400;font-size:31px;margin:0 0 8px}
+  .sub{color:var(--smoke);font-size:13.5px;margin:0 0 32px;max-width:56ch}
+
+  /* room list */
+  .rooms{list-style:none;margin:0 0 30px;padding:0;border-top:1px solid var(--rule)}
+  .rooms li{border-bottom:1px solid var(--rule)}
+  .room{width:100%;background:none;border:0;border-left:2px solid transparent;
+        padding:17px 0 17px 15px;margin-left:-2px;text-align:left;cursor:pointer;
+        font-family:inherit;color:inherit;display:grid;grid-template-columns:1fr 206px;
+        gap:4px 22px;align-items:baseline;transition:border-color .16s ease,padding-left .16s ease}
+  .room:hover,.room:focus-visible{border-left-color:var(--ink);padding-left:19px;outline:none}
+  .room b{font-family:var(--serif);font-weight:400;font-size:21px;display:block}
+  .room small{display:block;color:var(--smoke);font-size:13px;margin-top:2px}
+  .room .other{color:var(--pencil);font-size:12.5px;text-align:right;line-height:1.35}
+  .room .other em{display:block;color:var(--smoke);font-style:normal;font-size:11.5px;margin-top:2px}
+
+  .langline{font-size:12.5px;color:var(--smoke);margin:0}
+  .langline button{background:none;border:0;padding:0 1px;font-family:inherit;font-size:12.5px;
+                   color:var(--smoke);cursor:pointer;text-decoration:underline;text-underline-offset:3px;
+                   text-decoration-color:var(--rule)}
+  .langline button.on{color:var(--ink);text-decoration-color:var(--ink)}
+  .langline button:focus-visible{outline:2px solid var(--pencil);outline-offset:3px}
+
+  /* stage */
+  .topbar{display:flex;justify-content:space-between;align-items:baseline;
+          border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:26px}
+  .topbar span{font-size:12.5px;color:var(--smoke)}
+  .link{background:none;border:0;padding:0;font-family:inherit;font-size:12.5px;color:var(--smoke);
+        cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule)}
+  .link:hover{color:var(--ink)}
+  .link:focus-visible{outline:2px solid var(--pencil);outline-offset:3px}
+
+  /* the conversation is the page */
+  .convo{display:block}
+  .line{display:grid;grid-template-columns:var(--gutter) 1fr var(--notes);column-gap:22px;
+        align-items:start;margin-bottom:30px;position:relative}
+  .who{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--pencil);padding-top:7px}
+  .line.you .who{color:var(--ink)}
+  .sc{display:block;margin-top:6px;font-family:var(--serif);font-size:15px;letter-spacing:0;
+      color:var(--smoke);text-transform:none}
+  .sc.hi{color:var(--ink)}
+  .say{margin:0;font-family:var(--serif);font-size:19px;line-height:1.64;max-width:52ch}
+  .line.them .say{color:#20272b}
+
+  .side{border-left:1px solid var(--rule);padding:2px 0 0 16px;min-height:22px}
+  .note{margin-bottom:14px}
+  .note.in{animation:write .42s ease both}
+  @keyframes write{from{opacity:0;transform:translateX(4px)}to{opacity:1;transform:none}}
+  .note .k{font-family:var(--serif);font-style:italic;font-size:12px;color:var(--pencil);display:block;margin-bottom:2px}
+  .note p{margin:0;font-size:12px;line-height:1.5;color:#2b3033}
+  .fix{border-left:2px solid var(--red);padding-left:10px;margin:16px 0 0 -18px;background:var(--paper)}
+  .fix .k{font-family:var(--serif);font-style:italic;font-size:12px;color:var(--red);display:block;margin-bottom:3px}
+  .fix p{margin:0 0 5px;font-family:var(--serif);font-size:14px;line-height:1.55;color:var(--ink)}
+  .cue{background:none;border:0;padding:0;cursor:pointer;font-family:var(--sans);font-size:11.5px;color:var(--pencil)}
+  .cue:hover{color:var(--ink)}
+  .cue:focus-visible{outline:2px solid var(--pencil);outline-offset:3px}
+
+  /* slate */
+  .slateblock{margin:2px 0 0 calc(var(--gutter) + 22px);max-width:56ch}
+  .hint{margin:0 0 8px;font-size:12.5px;color:var(--smoke)}
+  .hint b{font-weight:600;color:var(--ink)}
+  .slate{background:none;border:0;padding:0;cursor:pointer;font-family:var(--sans);color:var(--ink);text-align:left}
+  .clap{margin-top:30px;height:15px;background:repeating-linear-gradient(-45deg,var(--ink) 0 9px,#EFEDE4 9px 18px);
+        border:1px solid var(--ink);transform-origin:left bottom;transform:rotate(-6deg);
+        transition:transform .18s cubic-bezier(.5,0,.3,1)}
+  .slate.rec .clap{transform:rotate(0)}
+  .board{display:flex;align-items:center;gap:18px;border:1px solid var(--ink);border-top:0;
+         padding:9px 14px;background:var(--sheet)}
+  .take{font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  .tc{font-variant-numeric:tabular-nums;font-size:13px;color:var(--smoke);min-width:82px}
+  .rec{display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.09em;color:var(--smoke)}
+  .rec i{width:7px;height:7px;border-radius:50%;background:var(--red);opacity:.16}
+  .slate.rec .rec i{opacity:1;animation:blink 1.1s steps(2,end) infinite}
+  @keyframes blink{50%{opacity:.2}}
+  .slate:focus-visible{outline:2px solid var(--pencil);outline-offset:4px}
+  .under{display:flex;gap:22px;align-items:baseline;margin:10px 0 0 calc(var(--gutter) + 22px)}
+  .upload{font-size:12px;color:var(--smoke)}
+  .upload label{cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule)}
+  input[type=file]{display:none}
+
+  /* end of scene */
+  .summary{margin:34px 0 0 calc(var(--gutter) + 22px);max-width:60ch;border-top:1px solid var(--ink);padding-top:20px}
+  .arc{font-family:var(--serif);font-size:26px;margin:0 0 6px}
+  .arc b{font-weight:400;color:var(--ink)}
+  .arc span{color:var(--smoke)}
+  .summary .k{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--smoke)}
+  .summary .keep{font-family:var(--serif);font-size:18px;line-height:1.6;margin:8px 0 4px}
+  .summary small{color:var(--smoke);font-size:12px}
+  .again{display:inline-block;background:none;border:0;border-bottom:1px solid var(--ink);padding:0 0 3px;
+         margin-top:22px;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+  .again:hover{color:var(--red);border-color:var(--red)}
+  .again:focus-visible{outline:2px solid var(--pencil);outline-offset:4px}
+
+  .walking{font-family:var(--serif);font-style:italic;color:var(--smoke);font-size:16px;
+           margin:0 0 0 calc(var(--gutter) + 22px)}
+  .toast{position:fixed;left:32px;bottom:26px;max-width:min(420px,90vw);background:var(--sheet);
+         border:1px solid var(--ink);border-left:3px solid var(--red);padding:12px 16px;font-size:13px;
+         opacity:0;transform:translateY(8px);transition:.22s ease;pointer-events:none}
+  .toast.on{opacity:1;transform:none}
+
+  @media(max-width:900px){
+    :root{--gutter:0px;--notes:0px}
+    .wrap{padding:26px 20px 90px}
+    header{flex-direction:column;align-items:flex-start;gap:6px}
+    .lede{text-align:left}
+    .line{display:block;margin-bottom:26px}
+    .who{display:block;padding:0 0 3px}
+    .say{max-width:none;font-size:18px}
+    .side{border-left:0;border-top:1px solid var(--rule);padding:12px 0 0;margin-top:10px}
+    .fix{margin-left:0;border-left:2px solid var(--red);padding-left:12px}
+    .slateblock,.under,.summary,.walking{margin-left:0}
+    .room{grid-template-columns:1fr}
+    .room .other{text-align:left;margin-top:2px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .note{animation:none}
+    .clap{transition:none}
+    .slate.rec .rec i{animation:none}
+    .toast{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Take Two</div>
+    <p class="lede">A rehearsal room for the conversation you're dreading.</p>
+  </header>
+
+  <section class="step on" id="s-rooms">
+    <h1>Which room?</h1>
+    <p class="sub">Not a lesson. The conversation is already on your calendar, and someone is going to push back.</p>
+    <ul class="rooms" id="rooms"></ul>
+    <p class="langline">They speak first in
+      <button data-lang="hi-IN" class="on">हिंदी</button> ·
+      <button data-lang="mr-IN">मराठी</button> ·
+      <button data-lang="bn-IN">বাংলা</button> ·
+      <button data-lang="ta-IN">தமிழ்</button> ·
+      <button data-lang="te-IN">తెలుగు</button> ·
+      <button data-lang="kn-IN">ಕನ್ನಡ</button> ·
+      <button data-lang="gu-IN">ગુજરાતી</button> ·
+      <button data-lang="pa-IN">ਪੰਜਾਬੀ</button> ·
+      <button data-lang="od-IN">ଓଡ଼ିଆ</button> ·
+      <button data-lang="ml-IN">മലയാളം</button> ·
+      <button data-lang="en-IN">English</button>
+      — after your first line, it follows you.</p>
+  </section>
+
+  <section class="step" id="s-stage">
+    <div class="topbar"><span id="roomname"></span><span><button class="link" id="autoBtn">auto-listen: on</button> · <button class="link" id="back">change room</button></span></div>
+    <div id="convo" class="convo"></div>
+    <div id="panel"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ROOMS = {
+  pitch:    {title:"Pitch in 20 seconds", line:"No context, no jargon.", who:"Ananya Rao", role:"investor"},
+  salary:   {title:"Salary negotiation",  line:"Firm, warm, no apology.", who:"Meera Iyer", role:"your hiring manager"},
+  doctor:   {title:"At the doctor",       line:"Symptom, duration, severity.", who:"Dr. Kulkarni", role:"busy, unimpressed"},
+  customer: {title:"Angry customer",      line:"Calm, ownership, next step.", who:"Rohit Sharma", role:"third call this week"},
+  auto:     {title:"Auto fare",           line:"Friendly, but immovable.", who:"Santosh", role:"meter? kya meter"},
+  landlord: {title:"The landlord",        line:"A date, in writing.", who:"Mr. Deshpande", role:"geyser, third week"},
+  office:   {title:"At the government counter", line:"Patient, precise, repetitive.", who:"Mrs. Shinde", role:"counter 4, lunch break"},
+  school:   {title:"Parent-teacher meeting", line:"Curious, not defensive.", who:"Mrs. Nair", role:"ten parents waiting"}
+};
+const $ = s => document.querySelector(s);
+const state = { room:null, lang:"hi-IN", hist:[], persona:"", rec:null, ac:null,
+                chunks:[], stream:null, t0:0, raf:null, turn:1, ended:false,
+                auto:true, spoke:false, arm:null };
+
+Object.entries(ROOMS).forEach(([k,r])=>{
+  const li = document.createElement("li");
+  li.innerHTML = `<button class="room">
+      <span><b>${r.title}</b><small>${r.line}</small></span>
+      <span class="other">${r.who}<em>${r.role}</em></span>
+    </button>`;
+  li.querySelector("button").onclick = ()=>openScene(k);
+  $("#rooms").appendChild(li);
+});
+
+document.querySelectorAll("[data-lang]").forEach(p=>{
+  p.onclick = ()=>{
+    document.querySelectorAll("[data-lang]").forEach(x=>x.classList.remove("on"));
+    p.classList.add("on"); state.lang = p.dataset.lang;
+  };
+});
+
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("on"), 5000);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function tc(sec){ const s=Math.floor(sec||0); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
+
+async function openScene(room){
+  state.room = room; state.hist = []; state.turn = 1; state.ended = false;
+  $("#roomname").textContent = ROOMS[room].title;
+  $("#convo").innerHTML = `<p class="walking">They're walking in.</p>`;
+  $("#panel").innerHTML = "";
+  $("#s-rooms").classList.remove("on"); $("#s-stage").classList.add("on");
+  window.scrollTo({top:0,behavior:"smooth"});
+
+  try{
+    const res = await fetch("/api/open", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({room, lang: state.lang})});
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error || "The scene didn't start.");
+    state.persona = d.name;
+    state.hist = [{role:"other", text:d.line, audio:d.audio}];
+    state.lang = d.lang || state.lang;
+    renderConvo(); renderSlate(); play(d.audio, armListen);
+  }catch(e){
+    toast(e.message);
+    $("#s-stage").classList.remove("on"); $("#s-rooms").classList.add("on");
+  }
+}
+
+function renderConvo(newIdx){
+  $("#convo").innerHTML = state.hist.map((m,i)=>{
+    if(m.role === "other")
+      return `<div class="line them">
+        <div class="who">${esc(state.persona)}</div>
+        <p class="say">${esc(m.text)}</p>
+        <aside class="side">${m.audio?`<button class="cue" data-a="${i}">▸ play</button>`:""}</aside>
+      </div>`;
+
+    const f = m.f || {};
+    const notes = (f.notes||[]).map(n=>
+      `<div class="note"><span class="k">${esc(n.kind||"")}</span><p>${esc(n.text||"")}</p></div>`).join("");
+    const fix = f.rewrite ? `<div class="fix">
+        <span class="k">Say this instead</span>
+        <p>${esc(f.rewrite)}</p>
+        ${f.audio?`<button class="cue" data-b="${i}">▸ hear it</button>`:""}
+      </div>` : "";
+    return `<div class="line you">
+        <div class="who">You${f.score!=null?`<span class="sc">${f.score}</span>`:""}</div>
+        <p class="say">${esc(m.text)}</p>
+        <aside class="side">${notes}${fix}</aside>
+      </div>`;
+  }).join("");
+
+  document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>play(state.hist[+b.dataset.a].audio));
+  document.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>play(state.hist[+b.dataset.b].f.audio));
+
+  if(newIdx != null){
+    const notes = document.querySelectorAll(`.line:nth-child(${newIdx+1}) .note`);
+    [...notes].forEach((n,k)=>{ n.style.animationDelay = (80+k*70)+"ms"; n.classList.add("in"); });
+    const el = document.querySelectorAll(".line")[newIdx];
+    el?.scrollIntoView({block:"center",behavior:"smooth"});
+  }
+}
+
+function play(src, onDone){
+  if(!src){ if(onDone) setTimeout(onDone, 150); return; }
+  const a = new Audio(src);
+  let done = false;
+  const fin = ()=>{ if(!done){ done = true; onDone && onDone(); } };
+  a.onended = fin; a.onerror = fin;
+  a.play().catch(()=>setTimeout(fin, 600));
+  setTimeout(fin, 25000);
+}
+
+/* Their line finishes -> the mic opens by itself. Silence closes it. */
+function armListen(){
+  if(!state.auto || state.ended) return;
+  if(!$("#s-stage").classList.contains("on")) return;
+  if(state.rec) return;
+  clearTimeout(state.arm);
+  state.arm = setTimeout(()=>{ if(!state.rec) startRec(true); }, 400);
+}
+
+function renderSlate(){
+  const n = state.turn;
+  $("#panel").innerHTML = `
+    <div class="slateblock">
+      <p class="hint" id="hint">${n===1 ? "They've said their piece. <b>Your turn.</b>" : "<b>Keep going.</b> Answer what they just said."}</p>
+      <button class="slate" id="slate" aria-label="Record your answer">
+        <div class="clap"></div>
+        <div class="board">
+          <span class="take">Take ${String(n).padStart(2,"0")}</span>
+          <span class="tc" id="tc">00:00 / 00:30</span>
+          <span class="rec"><i></i>Rec</span>
+        </div>
+      </button>
+    </div>
+    <div class="under">
+      <div class="upload"><label for="fileup">or use a recording</label><input type="file" id="fileup" accept="audio/*"></div>
+      ${n>1?`<button class="link" id="end">End the scene</button>`:""}
+    </div>`;
+  $("#slate").onclick = ()=>toggleRec();
+  $("#fileup").onchange = e => fire(e.target.files[0]);
+  if($("#end")) $("#end").onclick = endScene;
+}
+
+function fire(file){
+  if(!file) return;
+  const a = new Audio(URL.createObjectURL(file));
+  a.onloadedmetadata = ()=>send(file, a.duration || 20);
+  a.onerror = ()=>send(file, 20);
+}
+
+function mime(){
+  const c = ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg;codecs=opus"];
+  return c.find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+}
+
+async function startRec(auto){
+  if(state.rec) return;
+  try{
+    state.stream = await navigator.mediaDevices.getUserMedia(
+      {audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}});
+  }catch(e){ return toast("The mic didn't start. Allow it, or upload a recording."); }
+
+  state.chunks = []; state.spoke = false; state.t0 = performance.now();
+  const mt = mime();
+  state.rec = new MediaRecorder(state.stream, mt ? {mimeType:mt} : undefined);
+  state.rec.ondataavailable = e => { if(e.data.size) state.chunks.push(e.data); };
+  state.rec.onstop = ()=>{
+    const blob = new Blob(state.chunks, {type: state.rec.mimeType || "audio/webm"});
+    const secs = (performance.now() - state.t0)/1000;
+    state.stream.getTracks().forEach(t=>t.stop());
+    state.stream = null; state.rec = null;
+    if(blob.size > 900 && state.spoke) send(blob, secs);
+    else {
+      renderSlate();
+      const h = $("#hint"); if(h) h.innerHTML = "I didn't catch that. <b>Tap the slate, or turn auto-listen off.</b>";
+    }
+  };
+  state.rec.start(250);
+
+  const slate = $("#slate");
+  slate?.classList.add("rec");
+  $("#hint").innerHTML = state.auto
+    ? "Their turn is over. <b>Speak whenever you're ready.</b> I'll stop when you do."
+    : "Listening. Tap the slate to stop.";
+
+  // voice activity: calibrate room noise, open on speech, close on 1.1s of silence
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let an = null;
+  if(AC){
+    state.ac = new AC();
+    const src = state.ac.createMediaStreamSource(state.stream);
+    an = state.ac.createAnalyser();
+    an.fftSize = 1024;
+    src.connect(an);
+  }
+  const buf = new Float32Array(1024);
+  let noise = 0, lastVoice = state.t0;
+
+  const tick = ()=>{
+    if(!state.rec) return;
+    const now = performance.now(), el = (now - state.t0)/1000;
+    $("#tc").textContent = `${tc(el)} / 00:30`;
+
+    if(an){
+      an.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for(let i=0;i<buf.length;i++) sum += buf[i]*buf[i];
+      const rms = Math.sqrt(sum/buf.length);
+      if(el < 0.55){ noise = noise ? Math.min(noise, rms) : rms; }
+      const thr = Math.min(0.05, Math.max(0.011, noise * 1.7));
+      if(el > 0.55 && rms > thr){ state.spoke = true; lastVoice = now; }
+      if(state.spoke && now - lastVoice > 1300) return stopRec();
+      if(!state.spoke && now - state.t0 > 5000) return stopRec();
+    }
+    if(el >= 30) return stopRec();
+    state.raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function toggleRec(){ state.rec ? stopRec() : startRec(false); }
+
+function stopRec(){
+  if(state.raf) cancelAnimationFrame(state.raf);
+  if(state.ac){ try{ state.ac.close(); }catch(e){} state.ac = null; }
+  if(state.rec && state.rec.state !== "inactive") state.rec.stop();
+  $("#slate")?.classList.remove("rec");
+}
+
+function killListen(){
+  clearTimeout(state.arm);
+  stopRec();
+}
+
+async function send(blob, secs){
+  const fd = new FormData();
+  fd.append("file", blob, (blob.type||"").includes("mp4") ? "turn.m4a" : "turn.webm");
+  fd.append("room", state.room);
+  fd.append("duration", secs.toFixed(1));
+  fd.append("history", JSON.stringify(state.hist.map(m=>({
+    role:m.role, text:m.text, score:m.f?.score
+  }))));
+
+  $("#panel").innerHTML = `<p class="walking">Listening, then thinking.</p>`;
+
+  try{
+    const res = await fetch("/api/turn", {method:"POST", body:fd});
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error || "That didn't go through.");
+
+    const idx = state.hist.length;
+    state.hist.push({role:"you", text:d.transcript, f:d});
+    state.hist.push({role:"other", text:d.counterpart, audio:d.counterpart_audio});
+    state.turn += 1;
+    renderConvo(idx);
+    renderSlate();
+    play(d.counterpart_audio, armListen);
+  }catch(e){
+    toast(e.message || "Network error.");
+    renderSlate();
+  }
+}
+
+function endScene(){
+  state.ended = true; killListen();
+  const mine = state.hist.filter(m=>m.role==="you" && m.f);
+  const scores = mine.map(m=>m.f.score);
+  const last = mine[mine.length-1]?.f || {};
+  $("#panel").innerHTML = `
+    <div class="summary">
+      <p class="arc">${scores.map((s,i)=>`<span>${s}</span>`).join(' <span>→</span> ')}</p>
+      <span class="k">Keep this line</span>
+      <p class="keep">${esc(last.steal||"")}</p>
+      <small>${last.review_at ? `Say it again on ${last.review_at}.` : ""}</small>
+      <br><button class="again" id="again2">Rehearse another room</button>
+    </div>`;
+  $("#again2").onclick = ()=>{ $("#s-stage").classList.remove("on"); $("#s-rooms").classList.add("on"); window.scrollTo({top:0,behavior:"smooth"}); };
+  $(".summary").scrollIntoView({block:"center",behavior:"smooth"});
+}
+
+$("#autoBtn").onclick = ()=>{
+  state.auto = !state.auto;
+  $("#autoBtn").textContent = "auto-listen: " + (state.auto ? "on" : "off");
+  if(state.auto) armListen(); else killListen();
+};
+
+$("#back").onclick = ()=>{
+  killListen(); state.hist=[]; state.ended=false;
+  $("#s-stage").classList.remove("on"); $("#s-rooms").classList.add("on");
+};
+
+/* Offline safety net: ?demo=notes or ?demo=delta replays a recorded session. */
+const F1 = {
+  score:73, notes:[
+    {kind:"The point", text:"You reached it at 0:05, but you opened with a disclaimer. One line in."},
+    {kind:"The words", text:"“शायद यह अच्छा होगा” gives the room a reason to doubt you. Say it as a fact."},
+    {kind:"The answer", text:"They asked what it does. You described how it feels. Answer the question they asked."}
+  ],
+  rewrite:"मैं एक app बना रहा हूँ जहाँ लोग अपनी भाषा में मुश्किल बातचीत की practice कर सकते हैं। यह सुनता है और बताता है कि आप कैसे बोले।",
+  steal:"मैं एक app बना रहा हूँ जहाँ लोग अपनी भाषा में मुश्किल बातचीत की practice कर सकते हैं।",
+  audio:null, review_at:"28 Oct"
+};
+const F2 = {
+  score:88, notes:[
+    {kind:"The point", text:"0:02. You led with the thing itself. That is the whole fix."},
+    {kind:"The words", text:"No “शायद”, no “मतलब”. You said it like you believed it."},
+    {kind:"The answer", text:"You answered the money question, but never named who pays."}
+  ],
+  rewrite:"मैं एक app बना रहा हूँ जो लोगों को अपनी भाषा में मुश्किल बातचीत की practice कराता है। Teams इसे अपने customer-facing staff के लिए खरीदती हैं।",
+  steal:"Teams इसे अपने customer-facing staff के लिए खरीदती हैं।",
+  audio:null, review_at:"28 Oct"
+};
+const params = new URLSearchParams(location.search);
+if(params.has("demo")){
+  state.room = "pitch"; state.persona = "Ananya Rao"; state.turn = 3; state.ended = true;
+  state.hist = [
+    {role:"other", text:"So what does it actually do?", audio:null},
+    {role:"you", text:"हाँ तो देखिए मैं 1 app बना रहा हूँ जिसमें लोग अपनी भाषा में मुश्किल बातचीत की practice कर सकते हैं मतलब यह 1 coach है जो सुनता है और बताता है कि आप कैसे बोले शायद यह लोगों के लिए अच्छा होगा", f:F1},
+    {role:"other", text:"Okay — but why would anyone pay for that?", audio:null},
+    {role:"you", text:"यह app teams के लिए है जिनके लोग customers से बोलते हैं। हम उन्हें अपनी भाषा में practice कराते हैं और हर turn पर बताते हैं कि वे कैसे सुनाई दिए।", f:F2}
+  ];
+  $("#roomname").textContent = ROOMS.pitch.title;
+  $("#s-rooms").classList.remove("on"); $("#s-stage").classList.add("on");
+  renderConvo();
+  if(params.get("demo") === "delta") endScene(); else renderSlate();
+}
+</script>
+</body>
+</html>
