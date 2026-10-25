@@ -43,6 +43,18 @@
   .room .other{color:var(--pencil);font-size:12.5px;text-align:right;line-height:1.35}
   .room .other em{display:block;color:var(--smoke);font-style:normal;font-size:11.5px;margin-top:2px}
 
+  .make{border-top:1px solid var(--rule);padding-top:18px;margin:0 0 24px}
+  .make label{display:block;font-size:12.5px;color:var(--smoke);margin-bottom:6px}
+  .makerow{display:flex;gap:18px;align-items:baseline}
+  .makerow input{flex:1;min-width:0;background:none;border:0;border-bottom:1px solid var(--rule);
+                 color:var(--ink);font-family:inherit;font-size:14px;padding:7px 0}
+  .makerow input::placeholder{color:#b3b0a5}
+  .makerow input:focus{outline:none;border-bottom-color:var(--pencil)}
+  .makerow button{background:none;border:0;border-bottom:1px solid var(--ink);padding:0 0 3px;
+                  font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);
+                  cursor:pointer;white-space:nowrap}
+  .makerow button:hover{color:var(--red);border-color:var(--red)}
+  .makerow button:disabled{color:var(--smoke);border-color:var(--rule);cursor:default}
   .langline{font-size:12.5px;color:var(--smoke);margin:0}
   .langline button{background:none;border:0;padding:0 1px;font-family:inherit;font-size:12.5px;
                    color:var(--smoke);cursor:pointer;text-decoration:underline;text-underline-offset:3px;
@@ -160,6 +172,15 @@
     <h1>Which room?</h1>
     <p class="sub">Not a lesson. The conversation is already on your calendar, and someone is going to push back.</p>
     <ul class="rooms" id="rooms"></ul>
+
+    <div class="make">
+      <label for="desc">Or describe your own — one line is enough.</label>
+      <div class="makerow">
+        <input id="desc" placeholder="my landlord won't return my deposit" autocomplete="off" />
+        <button id="draft">Draft this room</button>
+      </div>
+    </div>
+
     <p class="langline">They speak first in
       <button data-lang="hi-IN" class="on">हिंदी</button> ·
       <button data-lang="mr-IN">मराठी</button> ·
@@ -200,15 +221,38 @@ const state = { room:null, lang:"hi-IN", hist:[], persona:"", rec:null, ac:null,
                 chunks:[], stream:null, t0:0, raf:null, turn:1, ended:false,
                 auto:true, spoke:false, arm:null };
 
-Object.entries(ROOMS).forEach(([k,r])=>{
+function addRoomCard(id, r, mine){
   const li = document.createElement("li");
   li.innerHTML = `<button class="room">
-      <span><b>${r.title}</b><small>${r.line}</small></span>
-      <span class="other">${r.who}<em>${r.role}</em></span>
+      <span><b>${esc(r.title)}</b><small>${esc(r.line)}${mine ? " · yours" : ""}</small></span>
+      <span class="other">${esc(r.who)}<em>${esc(r.role)}</em></span>
     </button>`;
-  li.querySelector("button").onclick = ()=>openScene(k);
-  $("#rooms").appendChild(li);
-});
+  li.querySelector("button").onclick = ()=>openScene(id);
+  if(mine) $("#rooms").prepend(li); else $("#rooms").appendChild(li);
+}
+
+Object.entries(ROOMS).forEach(([k,r])=>addRoomCard(k, r, false));
+
+async function draftRoom(){
+  const desc = $("#desc").value.trim();
+  if(desc.length < 8) return toast("A little more: who is it, and what do you want from them?");
+  const btn = $("#draft");
+  btn.disabled = true; btn.textContent = "Drafting…";
+  try{
+    const res = await fetch("/api/room", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({description: desc})});
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error || "Couldn't draft that room.");
+    ROOMS[d.id] = {title:d.title, line:d.line, who:d.who, role:d.role};
+    addRoomCard(d.id, ROOMS[d.id], true);
+    $("#desc").value = "";
+    openScene(d.id);
+  }catch(e){ toast(e.message || "Couldn't draft that room."); }
+  finally{ btn.disabled = false; btn.textContent = "Draft this room"; }
+}
+
+$("#draft").onclick = draftRoom;
+$("#desc").addEventListener("keydown", e=>{ if(e.key === "Enter") draftRoom(); });
 
 document.querySelectorAll("[data-lang]").forEach(p=>{
   p.onclick = ()=>{

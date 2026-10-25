@@ -53,6 +53,8 @@ GEMINI_API_KEY=...
 | At the government counter | Mrs. Shinde | The exact document and counter |
 | Parent–teacher meeting | Mrs. Nair | One thing to do this week |
 
+**Or describe your own.** One line — *"my landlord won't return my deposit"* — and Gemini drafts the room: a title, the other person's name and agenda, the register you need, what a good outcome sounds like, and their anchor and floor if money is involved. It opens straight into the scene.
+
 Eleven languages: Hindi, Marathi, Bengali, Tamil, Telugu, Kannada, Gujarati, Punjabi, Odia, Malayalam, English. The opener language is a hint — after your first line it follows what you actually speak.
 
 ## How a turn works

@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+import uuid
 import time
 from datetime import datetime, timedelta
 
@@ -22,6 +23,13 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_M
 GEMINI_COOLDOWN = 90  # seconds to skip Gemini after a 429
 _gemini_blocked_until = 0.0
 _no_thinking = False  # flash-lite rejects thinkingConfig
+
+CUSTOM = {}
+
+
+def room_of(rid):
+    return CUSTOM.get(rid) or ROOMS.get(rid) or ROOMS["pitch"]
+
 
 client = SarvamAI(api_subscription_key=KEY)
 app = FastAPI()
@@ -232,12 +240,12 @@ def ask_json(messages, max_tokens=700):
 
 
 def scene_system(room, lang, history):
-    name, role, trait = ROOMS[room]["persona"]
+    name, role, trait = room_of(room)["persona"]
     label = LANG_LABEL.get(lang, "Hindi")
     mine = [t for r, t in history if r == "other" and t]
     turn = len([1 for r, _ in history if r == "other"]) + 1
     said = "\n".join(f"- {t}" for t in mine[-3:]) or "(none yet)"
-    numbers = ROOMS[room].get("numbers")
+    numbers = room_of(room).get("numbers")
     money = ""
     if numbers:
         quoted = []
@@ -347,9 +355,65 @@ def index():
     return FileResponse("index.html")
 
 
+DRAFT_SYSTEM = """You are setting up a rehearsal room for a difficult real conversation in India.
+The user describes their situation. You invent the other person and the frame.
+Return JSON only, no markdown:
+{"title":"max 5 words","hint":"max 6 words, what the user must get","persona_name":"a believable Indian name",
+ "persona_role":"their relationship to the user, e.g. your landlord","trait":"how they behave, 25 words, with an agenda",
+ "brief":"register guidance for the user, 30 words","success":"what a good outcome sounds like, 20 words",
+ "numbers":"if money or a quantity is central: their opening number and their floor; otherwise an empty string"}"""
+
+
+def draft_room(desc):
+    """Gemini drafts the room; Sarvam writes it if Gemini is unavailable."""
+    if GEMINI_KEY and time.time() >= _gemini_blocked_until:
+        try:
+            r = httpx.post(GEMINI_URL, params={"key": GEMINI_KEY}, json={
+                "systemInstruction": {"parts": [{"text": DRAFT_SYSTEM}]},
+                "contents": [{"role": "user", "parts": [{"text": desc}]}],
+                "generationConfig": {"temperature": 0.8, "responseMimeType": "application/json"},
+            }, timeout=30)
+            r.raise_for_status()
+            parts = r.json()["candidates"][0]["content"]["parts"]
+            out = parse_json("".join(p.get("text", "") for p in parts if not p.get("thought")))
+            if out.get("title") and out.get("persona_name"):
+                return out
+        except Exception as e:
+            print("draft via gemini failed:", str(e)[:140])
+    return ask_json([{"role": "system", "content": DRAFT_SYSTEM},
+                     {"role": "user", "content": desc}], 500)
+
+
+@app.post("/api/room")
+async def make_room(payload: dict):
+    desc = (payload.get("description") or "").strip()[:600]
+    if len(desc) < 8:
+        return JSONResponse({"error": "Tell me a bit more about the conversation."}, 400)
+    try:
+        out = await asyncio.to_thread(draft_room, desc)
+    except Exception as e:
+        print("draft failed:", str(e)[:160])
+        return JSONResponse({"error": "Couldn't draft that room. Try describing it differently."}, 502)
+
+    rid = "c" + uuid.uuid4().hex[:8]
+    CUSTOM[rid] = {
+        "title": (out.get("title") or "Your room")[:60],
+        "line": (out.get("hint") or "Your own conversation")[:60],
+        "brief": (out.get("brief") or desc)[:240],
+        "success": (out.get("success") or "You get what you came for.")[:180],
+        "persona": ((out.get("persona_name") or "The other person")[:48],
+                    (out.get("persona_role") or "the person across the table")[:48],
+                    (out.get("trait") or "guarded but reasonable")[:240]),
+        "numbers": (out.get("numbers") or "")[:200],
+        "custom": True,
+    }
+    return {"id": rid, "title": CUSTOM[rid]["title"], "line": CUSTOM[rid]["line"],
+            "who": CUSTOM[rid]["persona"][0], "role": CUSTOM[rid]["persona"][1]}
+
+
 @app.post("/api/open")
 async def open_scene(payload: dict):
-    room = payload.get("room") if payload.get("room") in ROOMS else "pitch"
+    room = payload.get("room") or "pitch"
     lang = payload.get("lang") or "hi-IN"
     try:
         line = await asyncio.to_thread(gemini_scene, room, lang, [])
@@ -357,14 +421,13 @@ async def open_scene(payload: dict):
         print("open failed:", str(e)[:160])
         return JSONResponse({"error": "The scene could not start. Try again."}, 502)
     audio = await asyncio.to_thread(speak, line, lang, OTHER)
-    name, role, _ = ROOMS[room]["persona"]
+    name, role, _ = room_of(room)["persona"]
     return {"line": line, "audio": audio, "name": name, "role": role, "lang": lang}
 
 
 @app.post("/api/turn")
 async def turn(room: str = Form(...), duration: float = Form(0), history: str = Form("[]"),
                file: UploadFile = File(...)):
-    room = room if room in ROOMS else "pitch"
     data = await file.read()
     transcript, lang = await asyncio.to_thread(transcribe, data, file.filename or "take.webm")
     if not transcript:
@@ -382,10 +445,11 @@ async def turn(room: str = Form(...), duration: float = Form(0), history: str = 
         compare = (f"\nTHEIR PREVIOUS ANSWER: {prev.get('text','')}"
                    f"\nIt scored {prev.get('score','?')}. Say what genuinely improved, quote their words.")
 
+    R = room_of(room)
     sys_prompt = f"""You are a blunt but warm speaking coach in India. The speaker already speaks this language. You are NOT teaching language, grammar or vocabulary. You are coaching how they are heard.
 
-ROOM: {ROOMS[room]['title']} - {ROOMS[room]['brief']}
-SUCCESS LOOKS LIKE: {ROOMS[room]['success']}
+ROOM: {R['title']} - {R['brief']}
+SUCCESS LOOKS LIKE: {R['success']}
 THE OTHER PERSON JUST SAID: {said}{compare}
 
 Rules:
