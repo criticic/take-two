@@ -10,6 +10,21 @@ Not a language course. No lessons, no levels, no vocabulary drills.
 
 **Code:** https://github.com/criticic/take-two
 
+![Take Two — a conversation, with the coaching notes in the margin beside the line they are about](docs/conversation.png)
+
+<details>
+<summary>More screens</summary>
+
+**Pick a room** — eight real conversations, eleven languages.
+
+![Rooms](docs/rooms.png)
+
+**End of scene** — the score arc and the one line to keep.
+
+![Delta](docs/delta.png)
+
+</details>
+
 ## Run
 
 ```bash
